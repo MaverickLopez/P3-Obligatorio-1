@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="EntidadesNegocio\Envio.cs~RF43b9c4.TMP" />
+    <None Remove="EntidadesNegocio\TextoComentario.cs~RF454788.TMP" />
+    <None Remove="ValueObject\Usuario\Contrasenia.cs~RF2864e1.TMP" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ValueObject\Comentario\" />
+    <Folder Include="ValueObject\Envio\" />
+  </ItemGroup>
+
+</Project>

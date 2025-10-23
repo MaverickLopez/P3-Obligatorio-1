@@ -1,0 +1,4036 @@
+﻿***********************************
+Archivo: ObligatorioContext.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\ObligatorioContext.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using LogicaNegocio.EntidadesNegocio;
+using Microsoft.EntityFrameworkCore;
+
+namespace LogicaAccesoDatos
+{
+    public class ObligatorioContext : DbContext
+    {
+        public DbSet<Agencia> Agencias { get; set; }
+        public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<Envio> Envios { get; set; }
+        public DbSet<Comun> Comunes { get; set; }
+        public DbSet<Urgente> Urgentes { get; set; }
+        public DbSet<Auditoria> Auditorias { get; set; }
+
+        public ObligatorioContext(DbContextOptions options) : base(options)
+        {
+
+        }
+
+        //Introducing FOREIGN KEY constraint 'FK_Curso_Usuario_UsuarioId' on table 'Curso' may cause cycles or multiple cascade paths.
+        //Specify ON DELETE NO ACTION or ON UPDATE NO ACTION, or modify other FOREIGN KEY constraints.
+        //Could not create constraint or index.See previous errors.
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Envio>().HasOne(c => c.Empleado).WithMany().OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<Envio>().HasOne(c => c.Cliente).WithMany().OnDelete(DeleteBehavior.NoAction);
+            base.OnModelCreating(modelBuilder);
+        }
+
+    }
+}
+
+***********************************
+Archivo: EnvioMapper.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\Mappers\EnvioMapper.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using Compartido.DTOs.UsuarioDTOs;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.ExcepcionesEntidades;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.Mappers
+{
+    public class EnvioMapper
+    {
+        public static Envio EnvioFromEnvioComunDTO(AltaEnvioComunDTO envioDTO,
+            Usuario usu, Agencia age)
+        {
+            if (envioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+
+            Envio ret = new Comun(envioDTO.EmpleadoId, usu.Id, envioDTO.Peso, age);
+
+            return ret;
+        }
+
+        public static Envio EnvioFromEnvioUrgenteDTO(AltaEnvioUrgenteDTO envioDTO,
+            Usuario usu)
+        {
+            if (envioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+
+            Envio ret = new Urgente(envioDTO.EmpleadoId, usu.Id, envioDTO.Peso, envioDTO.DireccionPostal, null, false);
+
+            return ret;
+        }
+
+        public static List<EnvioEnteroDTO> EnvioDTOFromEnvio(List<Envio> envios)
+        {
+            List<EnvioEnteroDTO> mostrarEnviosDTO = new List<EnvioEnteroDTO>();
+
+            foreach (Envio e in envios)
+            {
+                EnvioEnteroDTO mostrarEnvioDTO = new EnvioEnteroDTO()
+                {
+                    Id = e.Id,
+                    NumeroTracking = e.NumeroTracking,
+                    EmpleadoId = e.IdEmpleado,
+                    ClienteId = e.IdCliente,
+                    Peso = e.Peso,
+                    Estado = e.Estado
+                };
+
+                if (mostrarEnvioDTO.Estado == Estado.EN_PROCESO)
+                {
+                    mostrarEnviosDTO.Add(mostrarEnvioDTO);
+                }
+
+            }
+            return mostrarEnviosDTO;
+        }
+
+        public static EnvioEnteroDTO EnvioToEnvioEnteroDTO(Envio envio)
+        {
+            EnvioEnteroDTO envioDTO = new EnvioEnteroDTO()
+            {
+                Id = envio.Id,
+                NumeroTracking = envio.NumeroTracking,
+                EmpleadoId = envio.IdEmpleado,
+                ClienteId = envio.IdCliente,
+                Peso = envio.Peso,
+                Estado = envio.Estado
+            };
+            return envioDTO;
+        }
+    }
+}
+
+***********************************
+Archivo: UsuarioMapper.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\Mappers\UsuarioMapper.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.Mappers
+{
+    public class UsuarioMapper
+    {
+
+        public static Usuario UsuarioFromUsuarioDTO(UsuarioDTO usuarioDTO)
+        {
+            if (usuarioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+            return new Usuario(usuarioDTO.Nombre, usuarioDTO.Apellido, usuarioDTO.Email, usuarioDTO.Contrasenia, usuarioDTO.Rol);
+        }
+
+        public static List<MostrarUsuarioDTO> UsuarioDTOFromUsuario(List<Usuario> usuarios)
+        {
+            List<MostrarUsuarioDTO> mostrarUsuariosDTO = new List<MostrarUsuarioDTO>();
+
+            foreach (Usuario u in usuarios)
+            {
+                MostrarUsuarioDTO mostrarUsuarioDTO = new MostrarUsuarioDTO()
+                {
+                    Id = u.Id,
+                    Nombre = u.Nombre,
+                    Apellido = u.Apellido,
+                    Email = u.Email,
+                    Contrasenia = u.Contrasenia,
+                    Rol = u.Rol,
+                    Estado = u.Estado
+                };
+                mostrarUsuariosDTO.Add(mostrarUsuarioDTO);
+            }
+            return mostrarUsuariosDTO;
+        }
+
+        public static UsuarioEnteroDTO UsuarioToUsuarioEnteroDTO(Usuario usuario)
+        {
+            UsuarioEnteroDTO usuarioEnteroDTO = new UsuarioEnteroDTO()
+            {
+                Id = usuario.Id,
+                Nombre = usuario.Nombre,
+                Apellido = usuario.Apellido,
+                Email = usuario.Email,
+                Contrasenia = usuario.Contrasenia,
+                Rol = usuario.Rol
+            };
+
+            return usuarioEnteroDTO;
+        }
+
+        public static MostrarUsuarioDTO UsuarioToMostrarUsuarioDTO(Usuario usuario)
+        {
+            MostrarUsuarioDTO usuarioDTO = new MostrarUsuarioDTO()
+            {
+                Id = usuario.Id,
+                Nombre = usuario.Nombre,
+                Apellido = usuario.Apellido,
+                Email = usuario.Email,
+                Contrasenia = usuario.Contrasenia,
+                Rol = usuario.Rol,
+                Estado = usuario.Estado
+            };
+            return usuarioDTO;
+        }
+
+        public static Usuario UsuarioFromMostrarUsuarioDTO(MostrarUsuarioDTO mostrarUsuarioDTO)
+        {
+            if (mostrarUsuarioDTO == null)
+            {
+                throw new ArgumentException("Datos incorrectos");
+            }
+            return new Usuario(
+                mostrarUsuarioDTO.Nombre,
+                mostrarUsuarioDTO.Apellido,
+                mostrarUsuarioDTO.Email,
+                mostrarUsuarioDTO.Contrasenia,
+                mostrarUsuarioDTO.Rol
+                );
+        }
+    }
+}
+
+***********************************
+Archivo: AuditoriaMapper.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\Mappers\AuditoriaMapper.cs
+***********************************
+using Compartido.DTOs.AuditoriaDTOs;
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.Mappers
+{
+    public class AuditoriaMapper
+    {
+
+        public static Auditoria AuditoriaFromAuditoriaDTO(AuditoriaDTO auditoriaDTO)
+        {
+            if (auditoriaDTO == null)
+            {
+                throw new ArgumentException("Datos incorrectos");
+            }
+            return new Auditoria(auditoriaDTO.Accion, auditoriaDTO.Fecha, auditoriaDTO.IdEmpleado);
+        }
+
+
+    }
+}
+
+***********************************
+Archivo: AgenciaMapper.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\Mappers\AgenciaMapper.cs
+***********************************
+using Compartido.DTOs.AgenciaDTOs;
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.Mappers
+{
+    public class AgenciaMapper
+    {
+        public static List<AgenciaEnteraDTO> ListAgenciaEnteraDTOFromListAgencia(List<Agencia> agencias)
+        {
+            List<AgenciaEnteraDTO> ret = new List<AgenciaEnteraDTO>();
+
+            foreach (Agencia a in agencias)
+            {
+                AgenciaEnteraDTO agenciaDTO = new AgenciaEnteraDTO()
+                {
+                    Id = a.Id,
+                    Nombre = a.Nombre,
+                    DireccionPostal = a.DireccionPostal,
+                    Latitud = a.Latitud,
+                    Longitud = a.Longitud
+                };
+                ret.Add(agenciaDTO);
+            }
+
+            return ret;
+        }
+    }
+}
+
+***********************************
+Archivo: ComentarioMapper.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\Mappers\ComentarioMapper.cs
+***********************************
+using Compartido.DTOs.ComentarioDTOs;
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.Mappers
+{
+    public class ComentarioMapper
+    {
+        public static Comentario ComentarioFromComentarioDTO(ComentarioDTO comentarioDTO)
+        {
+            if (comentarioDTO == null)
+            {
+                throw new ArgumentException("Datos incorrectos");
+            }
+            return new Comentario(comentarioDTO.Fecha, comentarioDTO.EmpleadoId, comentarioDTO.TextoComentario);
+        }
+
+
+    }
+}
+
+***********************************
+Archivo: RepositorioUsuarioEF.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Repositorios\RepositorioUsuarioEF.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.ExcepcionesEntidades;
+using LogicaNegocio.InterfaceRepositorios;
+
+namespace LogicaAccesoDatos.Repositorios
+{
+    public class RepositorioUsuarioEF : IRepositorioUsuario
+    {
+        private ObligatorioContext Contexto { get; set; }
+
+        public RepositorioUsuarioEF(ObligatorioContext contexto)
+        {
+            Contexto = contexto;
+        }
+
+        public void Alta(Usuario item)
+        {
+            Usuario usuarioBuscado = GetByNombre(item.Nombre);
+            if (usuarioBuscado == null)
+            {
+                Contexto.Usuarios.Add(item);
+                Contexto.SaveChanges();
+            }
+            else
+            {
+                throw new UsuarioException("Usuario ya existente");
+            }
+        }
+
+        public void Baja(int id)
+        {
+            if (GetPorId(id) != null)
+            {
+                Usuario usu = GetPorId(id);
+                usu.Estado = false;
+
+                Contexto.Usuarios.Update(usu);
+                Contexto.SaveChanges();
+            }
+            else
+            {
+                throw new UsuarioException("Usuario no existente");
+            }
+        }
+
+        public void Editar(Usuario item)
+        {
+            Usuario usuarioBuscado = GetByEmail(item.Id, item.Email);
+
+            if (usuarioBuscado == null)
+            {
+                Contexto.Usuarios.Update(item);
+                Contexto.SaveChanges();
+            }
+            else
+            {
+                throw new UsuarioException("Usuario ya existente");
+            }
+
+
+        }
+
+        public IEnumerable<Usuario> GetAll()
+        {
+            return Contexto.Usuarios;
+        }
+
+        public Usuario GetPorId(int id)
+        {
+            return Contexto.Usuarios.Find(id);
+        }
+
+        public Usuario Login(string email, string contrasenia)
+        {
+            return Contexto.Usuarios.Where(c => c.Email == email
+            && c.Contrasenia == contrasenia).SingleOrDefault();
+        }
+        public Usuario GetByEmailUsuario(string email)
+        {
+            return Contexto.Usuarios.Where(c => c.Email == email).SingleOrDefault();
+
+        }
+
+        private Usuario GetByNombre(string nombre)
+        {
+            return Contexto.Usuarios.Where(c => c.Nombre == nombre).SingleOrDefault();
+        }
+
+        private Usuario GetByEmail(int id, string email)
+        {
+            return Contexto.Usuarios.Where(c => c.Id != id && c.Email == email).SingleOrDefault();
+        }
+
+    }
+}
+
+***********************************
+Archivo: RepositorioEnvioEF.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Repositorios\RepositorioEnvioEF.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.ExcepcionesEntidades;
+using LogicaNegocio.InterfaceRepositorios;
+using Microsoft.EntityFrameworkCore;
+
+namespace LogicaAccesoDatos.Repositorios
+{
+    public class RepositorioEnvioEF : IRepositorioEnvio
+    {
+        private ObligatorioContext Contexto { get; set; }
+        public RepositorioEnvioEF(ObligatorioContext contexto)
+        {
+            Contexto = contexto;
+        }
+
+        public void Alta(Envio item)
+        {
+            if (item != null)
+            {
+                Contexto.Envios.Add(item);
+                Contexto.SaveChanges();
+            }
+        }
+
+        public void Baja(int id)
+        {
+            Envio envioBuscado = GetPorId(id);
+            if (envioBuscado != null)
+            {
+                envioBuscado.Estado = Estado.FINALIZADO;
+                envioBuscado.CalcularTiempoEntrega();
+
+                Contexto.Envios.Update(envioBuscado);
+                Contexto.SaveChanges();
+            }
+            else
+            {
+                throw new EnvioException("El envio no existe");
+            }
+        }
+
+        public void Editar(Envio item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<Envio> GetAll()
+        {
+            return Contexto.Envios.Include(envio => envio.Cliente)
+                .Include(envio => envio.Empleado);
+        }
+
+        public Envio GetPorId(int id)
+        {
+            return Contexto.Envios.Where(t => t.Id == id).Include(envio => envio.Comentario).SingleOrDefault();
+        }
+
+        public void AltaComentario(int idEnvio, Comentario comentario)
+        {
+            if (idEnvio != null && comentario != null)
+            {
+                Envio envioBuscado = GetPorId(idEnvio);
+                envioBuscado.Comentario.Add(comentario);
+                Contexto.Envios.Update(envioBuscado);
+                Contexto.SaveChanges();
+            }
+            else
+            {
+                throw new EnvioException("Envio u comentario no existe");
+            }
+        }
+
+        public Envio GetEnvioPorNumeroTracking(string numeroTracking)
+        {
+            return Contexto.Envios.Where(t => t.NumeroTracking == numeroTracking).Include(envio => envio.Comentario).SingleOrDefault();
+        }
+
+    }
+}
+
+***********************************
+Archivo: RepositorioAgenciaEF.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Repositorios\RepositorioAgenciaEF.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+
+namespace LogicaAccesoDatos.Repositorios
+{
+    public class RepositorioAgenciaEF : IRepositorioAgencia
+    {
+        private ObligatorioContext Contexto { get; set; }
+        public RepositorioAgenciaEF(ObligatorioContext contexto)
+        {
+            Contexto = contexto;
+        }
+
+        public void Alta(Agencia item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Baja(int id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Editar(Agencia item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<Agencia> GetAll()
+        {
+            return Contexto.Agencias;
+        }
+
+        public Agencia GetPorId(int id)
+        {
+            return Contexto.Agencias.Find(id);
+        }
+    }
+}
+
+***********************************
+Archivo: RepositorioAuditoriaEF.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Repositorios\RepositorioAuditoriaEF.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.ExcepcionesEntidades;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAccesoDatos.Repositorios
+{
+    public class RepositorioAuditoriaEF : IRepositorioAuditoria
+    {
+        private ObligatorioContext Contexto { get; set; }
+        public RepositorioAuditoriaEF(ObligatorioContext contexto)
+        {
+            Contexto = contexto;
+        }
+
+        public void Alta(Auditoria item)
+        {
+            Contexto.Auditorias.Add(item);
+            Contexto.SaveChanges();
+        }
+
+        public void Baja(int id)
+        {
+            throw new AuditoriaException("No se puede dar de baja una auditoria");
+        }
+
+        public void Editar(Auditoria item)
+        {
+            throw new AuditoriaException("No se puede editar una auditoria");
+        }
+
+        public IEnumerable<Auditoria> GetAll()
+        {
+            return Contexto.Auditorias;
+        }
+
+        public Auditoria GetPorId(int id)
+        {
+            return Contexto.Auditorias.Find(id);
+        }
+    }
+}
+
+***********************************
+Archivo: 20250430113120_primera.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Migrations\20250430113120_primera.cs
+***********************************
+using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace LogicaAccesoDatos.Migrations
+{
+    /// <inheritdoc />
+    public partial class primera : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "Agencias",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Nombre = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DireccionPostal = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Latitud = table.Column<double>(type: "float", nullable: false),
+                    Longitud = table.Column<double>(type: "float", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Agencias", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Auditorias",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Accion = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Fecha = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IdEmpleado = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Auditorias", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Usuarios",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Nombre = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Apellido = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Contrasenia = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Rol = table.Column<int>(type: "int", nullable: false),
+                    Estado = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Usuarios", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Envios",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    NumeroTracking = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IdEmpleado = table.Column<int>(type: "int", nullable: false),
+                    IdCliente = table.Column<int>(type: "int", nullable: false),
+                    Peso = table.Column<double>(type: "float", nullable: false),
+                    Estado = table.Column<int>(type: "int", nullable: false),
+                    Discriminator = table.Column<string>(type: "nvarchar(8)", maxLength: 8, nullable: false),
+                    AgenciaId = table.Column<int>(type: "int", nullable: true),
+                    DireccionPostal = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TiempoEntrega = table.Column<TimeSpan>(type: "time", nullable: true),
+                    Eficiencia = table.Column<bool>(type: "bit", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Envios", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Envios_Agencias_AgenciaId",
+                        column: x => x.AgenciaId,
+                        principalTable: "Agencias",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Envios_Usuarios_IdCliente",
+                        column: x => x.IdCliente,
+                        principalTable: "Usuarios",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Envios_Usuarios_IdEmpleado",
+                        column: x => x.IdEmpleado,
+                        principalTable: "Usuarios",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Comentario",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Fecha = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IdEmpleado = table.Column<int>(type: "int", nullable: false),
+                    TextoComentario = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EnvioId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Comentario", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Comentario_Envios_EnvioId",
+                        column: x => x.EnvioId,
+                        principalTable: "Envios",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Comentario_EnvioId",
+                table: "Comentario",
+                column: "EnvioId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Envios_AgenciaId",
+                table: "Envios",
+                column: "AgenciaId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Envios_IdCliente",
+                table: "Envios",
+                column: "IdCliente");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Envios_IdEmpleado",
+                table: "Envios",
+                column: "IdEmpleado");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "Auditorias");
+
+            migrationBuilder.DropTable(
+                name: "Comentario");
+
+            migrationBuilder.DropTable(
+                name: "Envios");
+
+            migrationBuilder.DropTable(
+                name: "Agencias");
+
+            migrationBuilder.DropTable(
+                name: "Usuarios");
+        }
+    }
+}
+
+***********************************
+Archivo: 20250430113120_primera.Designer.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Migrations\20250430113120_primera.Designer.cs
+***********************************
+// <auto-generated />
+using System;
+using LogicaAccesoDatos;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+#nullable disable
+
+namespace LogicaAccesoDatos.Migrations
+{
+    [DbContext(typeof(ObligatorioContext))]
+    [Migration("20250430113120_primera")]
+    partial class primera
+    {
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Agencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DireccionPostal")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Latitud")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Longitud")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Agencias");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Auditoria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Auditorias");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comentario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("EnvioId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TextoComentario")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvioId");
+
+                    b.ToTable("Comentario");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Envio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Discriminator")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdCliente")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NumeroTracking")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Peso")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdCliente");
+
+                    b.HasIndex("IdEmpleado");
+
+                    b.ToTable("Envios");
+
+                    b.HasDiscriminator().HasValue("Envio");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Usuario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Apellido")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Contrasenia")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Rol")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comun", b =>
+                {
+                    b.HasBaseType("LogicaNegocio.EntidadesNegocio.Envio");
+
+                    b.Property<int>("AgenciaId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("AgenciaId");
+
+                    b.HasDiscriminator().HasValue("Comun");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Urgente", b =>
+                {
+                    b.HasBaseType("LogicaNegocio.EntidadesNegocio.Envio");
+
+                    b.Property<string>("DireccionPostal")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Eficiencia")
+                        .HasColumnType("bit");
+
+                    b.Property<TimeSpan?>("TiempoEntrega")
+                        .HasColumnType("time");
+
+                    b.HasDiscriminator().HasValue("Urgente");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comentario", b =>
+                {
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Envio", null)
+                        .WithMany("Comentario")
+                        .HasForeignKey("EnvioId");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Envio", b =>
+                {
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Usuario", "Cliente")
+                        .WithMany()
+                        .HasForeignKey("IdCliente")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Usuario", "Empleado")
+                        .WithMany()
+                        .HasForeignKey("IdEmpleado")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Cliente");
+
+                    b.Navigation("Empleado");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comun", b =>
+                {
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Agencia", "Agencia")
+                        .WithMany()
+                        .HasForeignKey("AgenciaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agencia");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Envio", b =>
+                {
+                    b.Navigation("Comentario");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+
+***********************************
+Archivo: ObligatorioContextModelSnapshot.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAccesoDatos\Migrations\ObligatorioContextModelSnapshot.cs
+***********************************
+// <auto-generated />
+using System;
+using LogicaAccesoDatos;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+#nullable disable
+
+namespace LogicaAccesoDatos.Migrations
+{
+    [DbContext(typeof(ObligatorioContext))]
+    partial class ObligatorioContextModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Agencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DireccionPostal")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Latitud")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Longitud")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Agencias");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Auditoria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Auditorias");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comentario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("EnvioId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TextoComentario")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvioId");
+
+                    b.ToTable("Comentario");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Envio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Discriminator")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdCliente")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NumeroTracking")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Peso")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdCliente");
+
+                    b.HasIndex("IdEmpleado");
+
+                    b.ToTable("Envios");
+
+                    b.HasDiscriminator().HasValue("Envio");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Usuario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Apellido")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Contrasenia")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Rol")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comun", b =>
+                {
+                    b.HasBaseType("LogicaNegocio.EntidadesNegocio.Envio");
+
+                    b.Property<int>("AgenciaId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("AgenciaId");
+
+                    b.HasDiscriminator().HasValue("Comun");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Urgente", b =>
+                {
+                    b.HasBaseType("LogicaNegocio.EntidadesNegocio.Envio");
+
+                    b.Property<string>("DireccionPostal")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Eficiencia")
+                        .HasColumnType("bit");
+
+                    b.Property<TimeSpan?>("TiempoEntrega")
+                        .HasColumnType("time");
+
+                    b.HasDiscriminator().HasValue("Urgente");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comentario", b =>
+                {
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Envio", null)
+                        .WithMany("Comentario")
+                        .HasForeignKey("EnvioId");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Envio", b =>
+                {
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Usuario", "Cliente")
+                        .WithMany()
+                        .HasForeignKey("IdCliente")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Usuario", "Empleado")
+                        .WithMany()
+                        .HasForeignKey("IdEmpleado")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Cliente");
+
+                    b.Navigation("Empleado");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Comun", b =>
+                {
+                    b.HasOne("LogicaNegocio.EntidadesNegocio.Agencia", "Agencia")
+                        .WithMany()
+                        .HasForeignKey("AgenciaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agencia");
+                });
+
+            modelBuilder.Entity("LogicaNegocio.EntidadesNegocio.Envio", b =>
+                {
+                    b.Navigation("Comentario");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+
+***********************************
+Archivo: Envio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Envio.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public abstract class Envio : IEquatable<Envio>
+    {
+        private static int _ultimoTracking = 120;
+        public int Id { get; set; }
+        public string NumeroTracking { get; set; }
+
+        public Usuario Empleado { get; set; }
+        [ForeignKey("Empleado")]
+        public int IdEmpleado { get; set; }
+
+        public Usuario Cliente { get; set; }
+        [ForeignKey("Cliente")]
+        public int IdCliente { get; set; }
+
+        public double Peso { get; set; }
+        public Estado Estado { get; set; }
+        public List<Comentario> Comentario { get; set; } = new List<Comentario>();
+
+        protected Envio()
+        {
+            NumeroTracking = _ultimoTracking.ToString();
+            Estado = Estado.EN_PROCESO;
+            _ultimoTracking += _ultimoTracking / 3;
+        }
+
+        public Envio(int idEmpleado, int idCliente, double peso)
+        {
+            NumeroTracking = _ultimoTracking.ToString();
+            IdEmpleado = idEmpleado;
+            IdCliente = idCliente;
+            Peso = peso;
+            Estado = Estado.EN_PROCESO;
+            _ultimoTracking += _ultimoTracking / 3;
+        }
+
+        public bool Equals(Envio? other)
+        {
+            return Id == other.Id;
+        }
+
+        public abstract void CalcularTiempoEntrega();
+
+
+
+    }
+}
+
+***********************************
+Archivo: Auditoria.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Auditoria.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public class Auditoria : IEquatable<Auditoria>
+    {
+        public int Id { get; set; }
+        public string Accion { get; set; }
+        public DateTime Fecha { get; set; }
+        public int IdEmpleado { get; set; }
+
+        private Auditoria() { }
+        public Auditoria(string accion, DateTime fecha, int idEmpleado)
+        {
+            Accion = accion;
+            Fecha = fecha;
+            IdEmpleado = idEmpleado;
+        }
+
+        public bool Equals(Auditoria? other)
+        {
+            return Id == other.Id;
+        }
+    }
+}
+
+***********************************
+Archivo: Urgente.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Urgente.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public class Urgente : Envio
+    {
+        public string DireccionPostal { get; set; }
+        public TimeSpan? TiempoEntrega { get; set; }
+        public bool Eficiencia { get; set; }
+
+        protected Urgente() : base() { }
+
+        public Urgente(int idEmpleado, int idCliente, double peso, string direccionPostal, TimeSpan? tiempoEntrega, bool eficiencia) : base(idEmpleado, idCliente, peso)
+        {
+            DireccionPostal = direccionPostal;
+            TiempoEntrega = tiempoEntrega;
+            Eficiencia = eficiencia;
+        }
+
+        public override void CalcularTiempoEntrega()
+        {
+            DateTime ingreso = DateTime.Now;
+            DateTime finalizado = DateTime.Now;
+            foreach (Comentario c in Comentario)
+            {
+                if (c.TextoComentario == "Ingresado en agencia de origen")
+                {
+                    ingreso = c.Fecha;
+                }
+                else if (c.TextoComentario == "Finalizado")
+                {
+                    finalizado = c.Fecha;
+                }
+            }
+
+            TiempoEntrega = finalizado - ingreso;
+
+            if (TiempoEntrega < new TimeSpan(24, 0, 0))
+            {
+                Eficiencia = true;
+            }
+            else
+            {
+                Eficiencia = false;
+            }
+        }
+
+    }
+}
+
+***********************************
+Archivo: Comun.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Comun.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public class Comun : Envio
+    {
+        public Agencia Agencia { get; set; }
+
+        protected Comun():base() { }
+
+        public Comun(int idEmpleado, int idCliente, double peso, Agencia agencia) : base(idEmpleado, idCliente, peso)
+        {
+            Agencia = agencia;
+        }
+
+        public override void CalcularTiempoEntrega()
+        {
+        }
+
+    }
+}
+
+***********************************
+Archivo: Usuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Usuario.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Principal;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public class Usuario : IEquatable<Usuario>
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+        public Rol Rol { get; set; }
+        public bool Estado {  get; set; }   
+
+        private Usuario() { }
+        public Usuario(string nombre, string apellido, string email, string contrasenia, Rol rol)
+        {
+            Nombre = nombre;
+            Apellido = apellido;
+            Email = email;
+            Contrasenia = contrasenia;
+            Rol = rol;
+            Estado = true;
+        }
+
+        public bool Equals(Usuario? other)
+        {
+            return Id == other.Id;
+        }
+    }
+}
+
+***********************************
+Archivo: Comentario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Comentario.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public class Comentario : IEquatable<Comentario>
+    {
+        public int Id { get; set; }
+        public DateTime Fecha { get; set; }
+        public int IdEmpleado { get; set; }
+        public string TextoComentario { get; set; }
+
+        private Comentario() { }
+        public Comentario(DateTime fecha, int idEmpleado, string textoComentario)
+        {
+            Fecha = fecha;
+            IdEmpleado = idEmpleado;
+            TextoComentario = textoComentario;
+        }
+
+        public bool Equals(Comentario? other)
+        {
+            return Id == other.Id;
+        }
+    }
+}
+
+***********************************
+Archivo: Agencia.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Agencia.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public class Agencia : IEquatable<Agencia>
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string DireccionPostal { get; set; }
+        public double Latitud { get; set; }
+        public double Longitud { get; set; }
+
+        private Agencia() { }
+        public Agencia(string nombre, string direccionPostal, double latitud, double longitud)
+        {
+            Nombre = nombre;
+            DireccionPostal = direccionPostal;
+            Latitud = latitud;
+            Longitud = longitud;
+        }
+
+        public bool Equals(Agencia? other)
+        {
+            return Id == other.Id;
+        }
+    }
+}
+
+***********************************
+Archivo: Estado.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Estado.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public enum Estado
+    {
+        EN_PROCESO,
+        FINALIZADO
+    }
+}
+
+***********************************
+Archivo: Rol.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\EntidadesNegocio\Rol.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.EntidadesNegocio
+{
+    public enum Rol
+    {
+        Administrador,
+        Funcionario,
+        Cliente
+    }
+}
+
+***********************************
+Archivo: EnvioException.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\ExcepcionesEntidades\EnvioException.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.ExcepcionesEntidades
+{
+    public class EnvioException : Exception
+    {
+        public EnvioException() { }
+
+        public EnvioException(string message) : base(message) { }
+
+        public EnvioException(string message, Exception innerException) : base(message, innerException) { }
+
+    }
+}
+
+***********************************
+Archivo: ComentarioException.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\ExcepcionesEntidades\ComentarioException.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.ExcepcionesEntidades
+{
+    public class ComentarioException : Exception
+    {
+        public ComentarioException() { }
+
+        public ComentarioException(string message) : base(message) { }
+
+        public ComentarioException(string message, Exception innerException) : base(message, innerException) { }
+
+    }
+}
+
+***********************************
+Archivo: AuditoriaException.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\ExcepcionesEntidades\AuditoriaException.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.ExcepcionesEntidades
+{
+    public class AuditoriaException : Exception
+    {
+        public AuditoriaException() { }
+
+        public AuditoriaException(string message) : base(message) { }
+
+        public AuditoriaException(string message, Exception innerException) : base(message, innerException) { }
+
+    }
+}
+
+***********************************
+Archivo: UsuarioException.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\ExcepcionesEntidades\UsuarioException.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.ExcepcionesEntidades
+{
+    public class UsuarioException : Exception
+    {
+        public UsuarioException() { }
+
+        public UsuarioException(string message) : base(message) { }
+
+        public UsuarioException(string message, Exception innerException) : base(message, innerException) { }
+
+    }
+}
+
+***********************************
+Archivo: AgenciaExcepction.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\ExcepcionesEntidades\AgenciaExcepction.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.ExcepcionesEntidades
+{
+    public class AgenciaExcepction : Exception
+    {
+        public AgenciaExcepction() { }
+
+        public AgenciaExcepction(string message) : base(message) { }
+
+        public AgenciaExcepction(string message, Exception innerException) : base(message, innerException) { }
+    }
+}
+
+***********************************
+Archivo: IRepositorioAgencia.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\InterfaceRepositorios\IRepositorioAgencia.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.InterfaceRepositorios
+{
+    public interface IRepositorioAgencia : IRepositorio<Agencia>
+    {
+
+
+    }
+}
+
+***********************************
+Archivo: IRepositorio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\InterfaceRepositorios\IRepositorio.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.InterfaceRepositorios
+{
+    public interface IRepositorio<T>
+    {
+        void Alta(T item);
+        IEnumerable<T> GetAll();
+        T GetPorId(int id);
+        void Baja(int id);
+        void Editar(T item);
+    }
+}
+
+***********************************
+Archivo: IRepositorioUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\InterfaceRepositorios\IRepositorioUsuario.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.InterfaceRepositorios
+{
+    public interface IRepositorioUsuario : IRepositorio<Usuario>
+    {
+        public Usuario Login(string nombre, string contrasenia);
+        public Usuario GetByEmailUsuario(string email);
+    }
+}
+
+***********************************
+Archivo: IRepositorioAuditoria.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\InterfaceRepositorios\IRepositorioAuditoria.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.InterfaceRepositorios
+{
+    public interface IRepositorioAuditoria : IRepositorio<Auditoria>
+    {
+
+    }
+}
+
+***********************************
+Archivo: IRepositorioEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaNegocio\InterfaceRepositorios\IRepositorioEnvio.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaNegocio.InterfaceRepositorios
+{
+    public interface IRepositorioEnvio : IRepositorio<Envio>
+    {
+        public void AltaComentario(int idEnvio, Comentario comentario);
+        public Envio GetEnvioPorNumeroTracking(string numeroTracking);
+    }
+}
+
+***********************************
+Archivo: HomeController.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Controllers\HomeController.cs
+***********************************
+using Microsoft.AspNetCore.Mvc;
+using MVC.Models;
+using System.Diagnostics;
+
+namespace MVC.Controllers
+{
+    public class HomeController : Controller
+    {
+        private readonly ILogger<HomeController> _logger;
+
+        public HomeController(ILogger<HomeController> logger)
+        {
+            _logger = logger;
+        }
+
+        public IActionResult Index()
+        {
+            int? lid = HttpContext.Session.GetInt32("LogueadoId");
+            if (lid != null)
+            {
+                string LogueadoNombre = HttpContext.Session.GetString("LogueadoNombre");
+                string LogueadoApellido = HttpContext.Session.GetString("LogueadoApellido");
+                ViewBag.msgBienvenida = $"Hola {LogueadoNombre + " " + LogueadoApellido}";
+            }
+            else
+            {
+                ViewBag.msgBienvenida = $"Hola, inicie sesi�n porfavor";
+            }
+            return View();
+        }
+
+        public IActionResult Privacy()
+        {
+            return View();
+        }
+
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+    }
+}
+
+***********************************
+Archivo: AgenciaController.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Controllers\AgenciaController.cs
+***********************************
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace MVC.Controllers
+{
+    public class AgenciaController : Controller
+    {
+        // GET: AgenciaController
+        public ActionResult Index()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") == null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // GET: AgenciaController/Details/5
+        public ActionResult Details(int id)
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") == null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // GET: AgenciaController/Create
+        public ActionResult Create()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") == null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: AgenciaController/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Create(IFormCollection collection)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View();
+            }
+        }
+
+        // GET: AgenciaController/Edit/5
+        public ActionResult Edit(int id)
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") == null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: AgenciaController/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Edit(int id, IFormCollection collection)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View();
+            }
+        }
+
+        // GET: AgenciaController/Delete/5
+        public ActionResult Delete(int id)
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") == null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: AgenciaController/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Delete(int id, IFormCollection collection)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View();
+            }
+        }
+    }
+}
+
+***********************************
+Archivo: AuthController.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Controllers\AuthController.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.ExcepcionesEntidades;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages.Manage;
+using MVC.Models.Usuario;
+
+namespace MVC.Controllers
+{
+    public class AuthController : Controller
+    {
+        private ILoginUsuario CULoginUsuario { get; set; }
+
+        public AuthController(ILoginUsuario cULoginUsuario)
+        {
+            CULoginUsuario = cULoginUsuario;
+        }
+        // GET: AuthController/Login
+        public IActionResult Login()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") == null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: AuthController/HttpPost/Login/5
+        [HttpPost]
+        public IActionResult Login(LoginUsuarioViewModel loginUsuarioVM)
+        {
+            try
+            {
+                UsuarioEnteroDTO Buscado = CULoginUsuario.Ejecutar(loginUsuarioVM.Email, loginUsuarioVM.Contrasenia);
+                
+                if (Buscado.Rol == Rol.Cliente)
+                {
+                    throw new UsuarioException("Los usuarios no pueden loguearse");
+                }
+                else
+                {
+                    HttpContext.Session.SetInt32("LogueadoId", Buscado.Id);
+                    HttpContext.Session.SetString("LogueadoRol", Buscado.Rol.ToString());
+                    HttpContext.Session.SetString("LogueadoNombre", Buscado.Nombre);
+                    HttpContext.Session.SetString("LogueadoApellido", Buscado.Apellido);
+                    return RedirectToAction("Index", "Home");
+                }
+            }
+            catch (UsuarioException ex)
+            {
+                ViewBag.msg = ex.Message;
+                return View();
+            }
+            catch (Exception e)
+            {
+                ViewBag.msg = e.Message;
+                return View();
+            }
+        }
+
+        // GET: AuthController/Logout
+        public IActionResult Logout()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null)
+            {
+                HttpContext.Session.Clear();
+                return RedirectToAction("Login", "Auth");
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // GET: AuthController/NoAutorizado
+        [HttpGet]
+        public IActionResult NoAutorizado()
+        {
+            return View();
+        }
+
+
+    }
+}
+
+***********************************
+Archivo: UsuarioController.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Controllers\UsuarioController.cs
+***********************************
+using Compartido.DTOs.AuditoriaDTOs;
+using Compartido.DTOs.UsuarioDTOs;
+using LogicaAplicacion.InterfaceCasosUso.AuditoriaCU;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.ExcepcionesEntidades;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using MVC.Models.Usuario;
+
+namespace MVC.Controllers
+{
+    public class UsuarioController : Controller
+    {
+        private IAltaUsuario CUAltaUsuario { get; set; }
+        private IMostrarUsuario CUMostrarUsuario { get; set; }
+        private IBuscarUsuario CUBuscarUsuario { get; set; }
+        private IEditarUsuario CUEditarUsuaro { get; set; }
+        private IBorrarUsuario CUBorrarUsuario { get; set; }
+        private IAltaAuditoria CUAltaAuditoria { get; set; }
+
+        public UsuarioController(IAltaUsuario cUAltaUsuario,
+            IMostrarUsuario cUMostrarUsuario,
+            IBuscarUsuario cUBuscarUsuario,
+            IEditarUsuario cUEditarUsuaro,
+            IBorrarUsuario cUBorrarUsuario,
+            IAltaAuditoria cUAltaAuditoria)
+        {
+            CUAltaUsuario = cUAltaUsuario;
+            CUMostrarUsuario = cUMostrarUsuario;
+            CUBuscarUsuario = cUBuscarUsuario;
+            CUEditarUsuaro = cUEditarUsuaro;
+            CUBorrarUsuario = cUBorrarUsuario;
+            CUAltaAuditoria = cUAltaAuditoria;
+        }
+
+        // GET: UsuarioController
+        public ActionResult Index()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null
+                || HttpContext.Session.GetString("LogueadoRol") != "Administrador")
+            {
+                List<MostrarUsuarioDTO> mostrarUsuariosDTO = CUMostrarUsuario.Ejecutar();
+                List<MostrarUsuarioViewModel> mostrarUsuariosVM = new List<MostrarUsuarioViewModel>();
+
+                foreach (MostrarUsuarioDTO m in mostrarUsuariosDTO)
+                {
+                    MostrarUsuarioViewModel mostrarUsuarioVM = new MostrarUsuarioViewModel()
+                    {
+                        Id = m.Id,
+                        Nombre = m.Nombre,
+                        Apellido = m.Apellido,
+                        Email = m.Email,
+                        Contrasenia = m.Contrasenia,
+                        Rol = m.Rol,
+                        Estado = m.Estado
+                    };
+                    mostrarUsuariosVM.Add(mostrarUsuarioVM);
+                }
+
+                return View(mostrarUsuariosVM);
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // GET: UsuarioController/Details/5
+        public ActionResult Details(int id)
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null 
+                || HttpContext.Session.GetString("LogueadoRol") != "Administrador")
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // GET: UsuarioController/Create
+        public ActionResult Create()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null 
+                || HttpContext.Session.GetString("LogueadoRol") != "Administrador")
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: UsuarioController/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Create(UsuarioViewModel usuarioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (ModelState.IsValid || HttpContext.Session.GetString("LogueadoRol") != "Administrador")
+                {
+                    UsuarioDTO usuarioDTO = new UsuarioDTO()
+                    {
+                        Nombre = usuarioVM.Nombre,
+                        Apellido = usuarioVM.Apellido,
+                        Email = usuarioVM.Email,
+                        Contrasenia = usuarioVM.Contrasenia,
+                        Rol = Rol.Funcionario
+                    };
+
+                    AuditoriaDTO auditoriaDTO = new AuditoriaDTO()
+                    {
+                        Accion = "Nuevo usuario creado",
+                        Fecha = DateTime.Now,
+                        IdEmpleado = (int)HttpContext.Session.GetInt32("LogueadoId")
+                    };
+
+                    CUAltaUsuario.Ejecutar(usuarioDTO);
+                    CUAltaAuditoria.Ejecutar(auditoriaDTO);
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (UsuarioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+        }
+
+        // GET: UsuarioController/Edit/5
+        public ActionResult Edit(int id)
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null 
+                || HttpContext.Session.GetString("LogueadoRol") != "Administrador")
+            {
+                MostrarUsuarioViewModel usuarioVM = null;
+                try
+                {
+                    if (id <= 0)
+                    {
+                        throw new UsuarioException("Id incorrecto");
+                    }
+                    MostrarUsuarioDTO usuarioDTO = CUBuscarUsuario.Ejecutar(id);
+                    usuarioVM = new MostrarUsuarioViewModel()
+                    {
+                        Id = usuarioDTO.Id,
+                        Nombre = usuarioDTO.Nombre,
+                        Apellido = usuarioDTO.Apellido,
+                        Email = usuarioDTO.Email,
+                        Contrasenia = usuarioDTO.Contrasenia,
+                        Rol = usuarioDTO.Rol,
+                        Estado = usuarioDTO.Estado
+                    };
+                }
+                catch (UsuarioException ex)
+                {
+                    ViewBag.msg = ex.Message;
+                }
+
+                return View(usuarioVM);
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: UsuarioController/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Edit(int id, MostrarUsuarioViewModel usuarioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (ModelState.IsValid || HttpContext.Session.GetString("LogueadoRol") != "Administrador")
+                {
+                    MostrarUsuarioDTO usuarioDTO = new MostrarUsuarioDTO()
+                    {
+                        Id = usuarioVM.Id,
+                        Nombre = usuarioVM.Nombre,
+                        Apellido = usuarioVM.Apellido,
+                        Email = usuarioVM.Email,
+                        Contrasenia = usuarioVM.Contrasenia,
+                        Rol = usuarioVM.Rol,
+                        Estado = usuarioVM.Estado
+                    };
+
+                    AuditoriaDTO auditoriaDTO = new AuditoriaDTO()
+                    {
+                        Accion = "Usuario editado",
+                        Fecha = DateTime.Now,
+                        IdEmpleado = (int)HttpContext.Session.GetInt32("LogueadoId")
+                    };
+
+                    CUEditarUsuaro.Ejecutar(usuarioDTO);
+                    CUAltaAuditoria.Ejecutar(auditoriaDTO);
+                    return RedirectToAction(nameof(Index));
+                }
+                else
+                {
+                    ViewBag.msg = "Error en los datos";
+
+                }
+            }
+            catch (UsuarioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+
+        }
+
+        // GET: UsuarioController/Delete/5
+        public ActionResult Delete(int id)
+        {
+            MostrarUsuarioViewModel usuarioVM = null;
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (id <= 0)
+                {
+                    throw new UsuarioException("Id incorrecto");
+                }
+                MostrarUsuarioDTO usuarioDTO = CUBuscarUsuario.Ejecutar(id);
+                usuarioVM = new MostrarUsuarioViewModel
+                {
+                    Id = usuarioDTO.Id,
+                    Nombre = usuarioDTO.Nombre,
+                    Apellido = usuarioDTO.Apellido,
+                    Email = usuarioDTO.Email,
+                    Rol = usuarioDTO.Rol,
+                    Estado = usuarioDTO.Estado
+                };
+            }
+            catch (UsuarioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Datos incorrectos";
+            }
+            return View(usuarioVM);
+        }
+
+        // POST: UsuarioController/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Delete(int id, MostrarUsuarioViewModel usuarioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                AuditoriaDTO auditoriaDTO = new AuditoriaDTO()
+                {
+                    Accion = "Usuario dado de baja",
+                    Fecha = DateTime.Now,
+                    IdEmpleado = (int)HttpContext.Session.GetInt32("LogueadoId")
+                };
+
+                CUBorrarUsuario.Ejecutar(id);
+                CUAltaAuditoria.Ejecutar(auditoriaDTO);
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (UsuarioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+        }
+    }
+}
+
+***********************************
+Archivo: EnvioController.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Controllers\EnvioController.cs
+***********************************
+using Compartido.DTOs.AgenciaDTOs;
+using Compartido.DTOs.ComentarioDTOs;
+using Compartido.DTOs.EnvioDTOs;
+using LogicaAplicacion.InterfaceCasosUso.AgenciaCU;
+using LogicaAplicacion.InterfaceCasosUso.ComentarioCU;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.ExcepcionesEntidades;
+using Microsoft.AspNetCore.Mvc;
+using MVC.Models.Comentario;
+using MVC.Models.Envio;
+
+namespace MVC.Controllers
+{
+    public class EnvioController : Controller
+    {
+        private IAltaEnvioComun CUAltaEnvioComun { get; set; }
+        private IAltaEnvioUrgente CUAltaEnvioUrgente { get; set; }
+        private IMostrarEnvio CUMostrarEnvio { get; set; }
+        private IMostrarAgencia CUMostrarAgencia { get; set; }
+        private IBuscarEnvio CUBuscarEnvio { get; set; }
+        private IFinalizarEnvio CUFinalizarEnvio { get; set; }
+        private IAltaComentario CUAltaComentario { get; set; }
+
+        public EnvioController(IAltaEnvioComun cUAltaEnvio,
+            IAltaEnvioUrgente cUltaEnvioUrgente,
+            IMostrarEnvio cUMostrarEnvio,
+            IMostrarAgencia cUMostrarAgencia,
+            IBuscarEnvio cUBuscarEnvio,
+            IFinalizarEnvio cUFinalizarEnvio,
+            IAltaComentario cUAltaComentario)
+        {
+            CUAltaEnvioComun = cUAltaEnvio;
+            CUAltaEnvioUrgente = cUltaEnvioUrgente;
+            CUMostrarEnvio = cUMostrarEnvio;
+            CUMostrarAgencia = cUMostrarAgencia;
+            CUBuscarEnvio = cUBuscarEnvio;
+            CUFinalizarEnvio = cUFinalizarEnvio;
+            CUAltaComentario = cUAltaComentario;
+        }
+
+        // GET: EnvioController
+        public ActionResult Index()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null)
+            {
+                List<EnvioEnteroDTO> mostrarEnviosDTO = CUMostrarEnvio.Ejecutar();
+                List<EnvioEnteroViewModel> mostrarEnviosVM = new List<EnvioEnteroViewModel>();
+
+                foreach (EnvioEnteroDTO m in mostrarEnviosDTO)
+                {
+                    EnvioEnteroViewModel mostrarEnvioVM = new EnvioEnteroViewModel()
+                    {
+                        Id = m.Id,
+                        NumeroTracking = m.NumeroTracking,
+                        EmpleadoId = m.EmpleadoId,
+                        ClienteId = m.ClienteId,
+                        Peso = m.Peso,
+                        Estado = m.Estado
+                    };
+
+                    mostrarEnviosVM.Add(mostrarEnvioVM);
+                }
+
+                return View(mostrarEnviosVM);
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // GET: EnvioController/Create
+        public ActionResult CreateComun()
+        {
+            AltaEnvioComunViewModel envioVM = new AltaEnvioComunViewModel();
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                List<AgenciaEnteraDTO> datosAgencias = CUMostrarAgencia.Ejecutar();
+
+                envioVM.Agencias = datosAgencias.Select(
+                    dtoAgencia => new Models.Agencia.MostrarAgenciaViewModel()
+                    {
+                        Id = dtoAgencia.Id,
+                        Nombre = dtoAgencia.Nombre
+                    });
+            }
+            catch (EnvioException ex)
+            {
+                ViewBag.Mensaje = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Mensaje = "Error en los datos";
+            }
+
+            return View(envioVM);
+        }
+
+        // POST: EnvioController/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult CreateComun(AltaEnvioComunViewModel envioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (ModelState.IsValid)
+                {
+                    AltaEnvioComunDTO envioDTO = new AltaEnvioComunDTO()
+                    {
+                        Email = envioVM.Email,
+                        EmpleadoId = (int)LogueadoId,
+                        Peso = envioVM.Peso,
+                        AgenciaId = envioVM.AgenciaId
+                    };
+
+                    int EnvioId = CUAltaEnvioComun.Ejecutar(envioDTO);
+                    ComentarioDTO comentarioDTO = new ComentarioDTO()
+                    {
+                        EnvioId = EnvioId,
+                        Fecha = DateTime.Now,
+                        EmpleadoId = (int)LogueadoId,
+                        TextoComentario = "Ingresado en agencia de origen"
+                    };
+                    CUAltaComentario.Ejecutar(comentarioDTO);
+
+                    return RedirectToAction(nameof(Index));
+                }
+
+            }
+            catch (EnvioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+        }
+
+
+        // GET: EnvioController/Create
+        public ActionResult CreateUrgente()
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null)
+            {
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        // POST: EnvioController/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult CreateUrgente(AltaEnvioUrgenteViewModel envioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (ModelState.IsValid)
+                {
+                    AltaEnvioUrgenteDTO envioDTO = new AltaEnvioUrgenteDTO()
+                    {
+                        Email = envioVM.Email,
+                        EmpleadoId = (int)LogueadoId,
+                        Peso = envioVM.Peso,
+                        DireccionPostal = envioVM.DireccionPostal
+                    };
+
+                    int EnvioId = CUAltaEnvioUrgente.Ejecutar(envioDTO);
+                    ComentarioDTO comentarioDTO = new ComentarioDTO()
+                    {
+                        EnvioId = EnvioId,
+                        Fecha = DateTime.Now,
+                        EmpleadoId = (int)LogueadoId,
+                        TextoComentario = "Ingresado en agencia de origen"
+                    };
+                    CUAltaComentario.Ejecutar(comentarioDTO);
+
+                    return RedirectToAction(nameof(Index));
+                }
+
+            }
+            catch (EnvioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+        }
+
+        // GET: EnvioController/Delete/5
+        public ActionResult Delete(int id)
+        {
+            EnvioEnteroViewModel envioVM = null;
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (id <= 0)
+                {
+                    throw new EnvioException("Id incorrecto");
+                }
+                EnvioEnteroDTO envioDTO = CUBuscarEnvio.Ejecutar(id);
+                envioVM = new EnvioEnteroViewModel
+                {
+                    Id = envioDTO.Id,
+                    NumeroTracking = envioDTO.NumeroTracking,
+                    EmpleadoId = envioDTO.EmpleadoId,
+                    ClienteId = envioDTO.ClienteId,
+                    Peso = envioDTO.Peso,
+                    Estado = envioDTO.Estado
+                };
+            }
+            catch (EnvioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Datos incorrectos";
+            }
+            return View(envioVM);
+        }
+
+        // POST: EnvioController/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Delete(int id, EnvioEnteroViewModel envioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                ComentarioDTO comentarioDTO = new ComentarioDTO()
+                {
+                    EnvioId = envioVM.Id,
+                    Fecha = DateTime.Now,
+                    EmpleadoId = (int)LogueadoId,
+                    TextoComentario = "Finalizado"
+                };
+                CUAltaComentario.Ejecutar(comentarioDTO);
+
+                CUFinalizarEnvio.Ejecutar(id);
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (EnvioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+        }
+
+
+        public IActionResult AgregarComentario(int id)
+        {
+            if (HttpContext.Session.GetInt32("LogueadoId") != null)
+            {
+                ViewBag.EnvioId = id;
+                return View();
+            }
+            else
+            {
+                return RedirectToAction("NoAutorizado", "Auth");
+            }
+        }
+
+        [HttpPost]
+        public IActionResult AgregarComentario(ComentarioViewModel comentarioVM)
+        {
+            try
+            {
+                int? LogueadoId = HttpContext.Session.GetInt32("LogueadoId");
+                if (ModelState.IsValid)
+                {
+                    ComentarioDTO comentarioDTO = new ComentarioDTO()
+                    {
+                        EnvioId = comentarioVM.EnvioId,
+                        Fecha = DateTime.Now,
+                        EmpleadoId = (int)LogueadoId,
+                        TextoComentario = comentarioVM.TextoComentario
+                    };
+
+                    CUAltaComentario.Ejecutar(comentarioDTO);
+                    return RedirectToAction(nameof(Index));
+                }
+
+            }
+            catch (ComentarioException ex)
+            {
+                ViewBag.msg = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                ViewBag.msg = "Error en los datos";
+            }
+            return View();
+        }
+    }
+}
+
+***********************************
+Archivo: ErrorViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\ErrorViewModel.cs
+***********************************
+namespace MVC.Models
+{
+    public class ErrorViewModel
+    {
+        public string? RequestId { get; set; }
+
+        public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+    }
+}
+
+***********************************
+Archivo: EnvioController.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\WebAPI\Controllers\EnvioController.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.ExcepcionesEntidades;
+using Microsoft.AspNetCore.Mvc;
+
+namespace WebAPI.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class EnvioController : ControllerBase
+    {
+
+        private IMostrarEnvio CUMostrarEnvio { get; set; }
+        private IAltaEnvioComun CUAltaEnvioComun { get; set; }
+        private IAltaEnvioUrgente CUAltaEnvioUrgente { get; set; }
+        private IBuscarEnvio CUBuscarEnvio { get; set; }
+        private IBuscarEnvioNumeroTracking CUBuscarEnvioNumeroTracking { get; set; }
+        public EnvioController(IMostrarEnvio cUMostrarEnvio,
+            IAltaEnvioComun cUAltaEnvioComun,
+            IAltaEnvioUrgente cUAltaEnvioUrgente,
+            IBuscarEnvio cUBuscarEnvio,
+            IBuscarEnvioNumeroTracking cUBuscarEnvioNumeroTracking)
+        {
+            CUMostrarEnvio = cUMostrarEnvio;
+            CUAltaEnvioComun = cUAltaEnvioComun;
+            CUAltaEnvioUrgente = cUAltaEnvioUrgente;
+            CUBuscarEnvio = cUBuscarEnvio;
+            CUBuscarEnvioNumeroTracking = cUBuscarEnvioNumeroTracking;
+        }
+
+
+
+
+        // GET: api/<EnvioController>
+        [HttpGet]
+        public IActionResult Get()
+        {
+            try
+            {
+                List<EnvioEnteroDTO> listaEnviosDTO = CUMostrarEnvio.Ejecutar();
+                if (listaEnviosDTO != null)
+                {
+                    return Ok(listaEnviosDTO);
+                }
+                else
+                {
+                    return NotFound("No existen envios");
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500);
+            }
+        }
+
+        // GET api/<EnvioController>/5
+        [HttpGet("{numeroTracking}")]
+        public IActionResult Get(string numeroTracking)
+        {
+            try
+            {
+                if (numeroTracking != null)
+                {
+                    EnvioEnteroDTO envioDTO = CUBuscarEnvioNumeroTracking.Ejecutar(numeroTracking);
+                    return Ok(envioDTO);
+                }
+                else
+                {
+                    return BadRequest("El Numero de tracking recibido no es valido");
+                }
+            }
+            catch (EnvioException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500);
+            }
+
+
+        }
+
+        // POST api/<EnvioController>
+        [HttpPost]
+        public IActionResult Post([FromBody] string value)
+        {
+            try
+            {
+
+
+
+
+
+                return Ok();
+            }
+            catch (EnvioException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500);
+            }
+
+        }
+
+        // PUT api/<EnvioController>/5
+        [HttpPut("{id}")]
+        public void Put(int id, [FromBody] string value)
+        {
+
+
+        }
+
+        // DELETE api/<EnvioController>/5
+        [HttpDelete("{id}")]
+        public void Delete(int id)
+        {
+
+
+        }
+    }
+}
+
+***********************************
+Archivo: AgenciaEnteraDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\AgenciaDTOs\AgenciaEnteraDTO.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.AgenciaDTOs
+{
+    public class AgenciaEnteraDTO
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string DireccionPostal { get; set; }
+        public double Latitud { get; set; }
+        public double Longitud { get; set; }
+    }
+}
+
+***********************************
+Archivo: AltaEnvioComunDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\EnvioDTOs\AltaEnvioComunDTO.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.EnvioDTOs
+{
+    public class AltaEnvioComunDTO
+    {
+        public string Email { get; set; }
+        public int EmpleadoId { get; set; }
+        public double Peso { get; set; }
+        public int AgenciaId { get; set; }
+    }
+}
+
+***********************************
+Archivo: EnvioEnteroDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\EnvioDTOs\EnvioEnteroDTO.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.EnvioDTOs
+{
+    public class EnvioEnteroDTO
+    {
+        public int Id { get; set; }
+        public string NumeroTracking { get; set; }
+        public int EmpleadoId { get; set; }
+        public int ClienteId { get; set; }
+        public double Peso { get; set; }
+        public Estado Estado { get; set; }
+
+    }
+}
+
+***********************************
+Archivo: AltaEnvioUrgenteDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\EnvioDTOs\AltaEnvioUrgenteDTO.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.EnvioDTOs
+{
+    public class AltaEnvioUrgenteDTO
+    {
+        public string Email { get; set; }
+        public int EmpleadoId { get; set; }
+        public string DireccionPostal { get; set; }
+        public double Peso { get; set; }
+    }
+}
+
+***********************************
+Archivo: ComentarioDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\ComentarioDTOs\ComentarioDTO.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.ComentarioDTOs
+{
+    public class ComentarioDTO
+    {
+        public int EnvioId { get; set; }
+        public DateTime Fecha { get; set; }
+        public int EmpleadoId { get; set; }
+        public string TextoComentario { get; set; }
+    }
+}
+
+***********************************
+Archivo: UsuarioEnteroDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\UsuarioDTOs\UsuarioEnteroDTO.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.UsuarioDTOs
+{
+    public class UsuarioEnteroDTO
+    {
+        public int Id {  get; set; }
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+        public Rol Rol { get; set; }
+    }
+}
+
+***********************************
+Archivo: MostrarUsuarioDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\UsuarioDTOs\MostrarUsuarioDTO.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.UsuarioDTOs
+{
+    public class MostrarUsuarioDTO
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+        public Rol Rol { get; set; }
+        public bool Estado { get ; set; }
+    }
+}
+
+***********************************
+Archivo: UsuarioDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\UsuarioDTOs\UsuarioDTO.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Principal;
+using System.Text;
+using System.Threading.Tasks;
+using LogicaNegocio.EntidadesNegocio;
+
+namespace Compartido.DTOs.UsuarioDTOs
+{
+    public class UsuarioDTO
+    {
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+        public Rol Rol { get; set; }
+
+    }
+}
+
+***********************************
+Archivo: AuditoriaDTO.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\Compartido\DTOs\AuditoriaDTOs\AuditoriaDTO.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Compartido.DTOs.AuditoriaDTOs
+{
+    public class AuditoriaDTO
+    {
+        public string Accion { get; set; }
+        public DateTime Fecha { get; set; }
+        public int IdEmpleado { get; set; }
+    }
+}
+
+***********************************
+Archivo: MostrarAgencia.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\AgenciaCU\MostrarAgencia.cs
+***********************************
+using Compartido.DTOs.AgenciaDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.AgenciaCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.AgenciaCU
+{
+    public class MostrarAgencia : IMostrarAgencia
+    {
+        private IRepositorioAgencia RepoAgencias { get; set; }
+        public MostrarAgencia(IRepositorioAgencia repoAgencias)
+        {
+            RepoAgencias = repoAgencias;
+        }
+
+        public List<AgenciaEnteraDTO> Ejecutar()
+        {
+            List<Agencia> agencias = RepoAgencias.GetAll().ToList();
+            if (agencias == null)
+            {
+                throw new ArgumentNullException("No hay agencias");
+            }
+
+            List<AgenciaEnteraDTO> ret = AgenciaMapper.ListAgenciaEnteraDTOFromListAgencia(agencias);
+            return ret;
+        }
+    }
+}
+
+***********************************
+Archivo: AltaComentario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\ComentarioCU\AltaComentario.cs
+***********************************
+using Compartido.DTOs.ComentarioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.ComentarioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.ComentarioCU
+{
+    public class AltaComentario : IAltaComentario
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+        public AltaComentario(IRepositorioEnvio repoEnvio)
+        {
+            RepoEnvio = repoEnvio;
+        }
+
+        public void Ejecutar(ComentarioDTO comentarioDTO)
+        {
+            if (comentarioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+            Comentario comentario = ComentarioMapper.ComentarioFromComentarioDTO(comentarioDTO);
+            RepoEnvio.AltaComentario(comentarioDTO.EnvioId, comentario);
+        }
+    }
+}
+
+***********************************
+Archivo: MostrarEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\EnvioCU\MostrarEnvio.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.EnvioCU
+{
+    public class MostrarEnvio : IMostrarEnvio
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+
+        public MostrarEnvio(IRepositorioEnvio repoEnvio)
+        {
+            RepoEnvio = repoEnvio;
+        }
+
+        public List<EnvioEnteroDTO> Ejecutar()
+        {
+            List<Envio> envios = RepoEnvio.GetAll().ToList();
+            if (envios == null)
+            {
+                throw new ArgumentException("No hay envios");
+            }
+
+            List<EnvioEnteroDTO> enviosDTO = EnvioMapper.EnvioDTOFromEnvio(envios);
+            return enviosDTO;
+        }
+    }
+}
+
+***********************************
+Archivo: AltaEnvioComun.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\EnvioCU\AltaEnvioComun.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Compartido.DTOs.EnvioDTOs;
+using Compartido.Mappers;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaAccesoDatos.Repositorios;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.InterfaceRepositorios;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.EnvioCU
+{
+    public class AltaEnvioComun : IAltaEnvioComun
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+        private IRepositorioUsuario RepoUsuario { get; set; }
+        private IRepositorioAgencia RepoAgencia { get; set; }
+
+        public AltaEnvioComun(IRepositorioEnvio repoEnvio,
+            IRepositorioUsuario repoUsuario,
+            IRepositorioAgencia repoAgencia)
+        {
+            RepoEnvio = repoEnvio;
+            RepoUsuario = repoUsuario;
+            RepoAgencia = repoAgencia;
+        }
+
+        public int Ejecutar(AltaEnvioComunDTO envioDTO)
+        {
+            if (envioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+            Usuario usu = RepoUsuario.GetByEmailUsuario(envioDTO.Email);
+            Agencia age = RepoAgencia.GetPorId(envioDTO.AgenciaId);
+            Envio envio = EnvioMapper.EnvioFromEnvioComunDTO(envioDTO, usu, age);
+
+            RepoEnvio.Alta(envio);
+            return envio.Id;
+        }
+    }
+}
+
+***********************************
+Archivo: AltaEnvioUrgente.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\EnvioCU\AltaEnvioUrgente.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.EnvioCU
+{
+    public class AltaEnvioUrgente : IAltaEnvioUrgente
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+        private IRepositorioUsuario RepoUsuario { get; set; }
+        public AltaEnvioUrgente(IRepositorioEnvio repoEnvio,
+            IRepositorioUsuario repoUsuario)
+        {
+            RepoEnvio = repoEnvio;
+            RepoUsuario = repoUsuario;
+        }
+
+        public int Ejecutar(AltaEnvioUrgenteDTO envioDTO)
+        {
+            if (envioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+            Usuario usu = RepoUsuario.GetByEmailUsuario(envioDTO.Email);
+
+            Envio envio = EnvioMapper.EnvioFromEnvioUrgenteDTO(envioDTO, usu);
+
+            RepoEnvio.Alta(envio);
+            return envio.Id;
+        }
+    }
+}
+
+***********************************
+Archivo: FinalizarEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\EnvioCU\FinalizarEnvio.cs
+***********************************
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.EnvioCU
+{
+    public class FinalizarEnvio : IFinalizarEnvio
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+        public FinalizarEnvio(IRepositorioEnvio repoEnvio)
+        {
+            RepoEnvio = repoEnvio;
+        }
+
+        public void Ejecutar(int id)
+        {
+            RepoEnvio.Baja(id);
+        }
+    }
+}
+
+***********************************
+Archivo: BuscarEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\EnvioCU\BuscarEnvio.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.EnvioCU
+{
+    public class BuscarEnvio : IBuscarEnvio
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+        public BuscarEnvio(IRepositorioEnvio repoEnvio)
+        {
+            RepoEnvio = repoEnvio;
+        }
+
+        public EnvioEnteroDTO Ejecutar(int id)
+        {
+            return EnvioMapper.EnvioToEnvioEnteroDTO(RepoEnvio.GetPorId(id));
+        }
+    }
+}
+
+***********************************
+Archivo: BuscarEnvioNumeroTracking.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\EnvioCU\BuscarEnvioNumeroTracking.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.EnvioCU;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.EnvioCU
+{
+    public class BuscarEnvioNumeroTracking : IBuscarEnvioNumeroTracking
+    {
+        private IRepositorioEnvio RepoEnvio { get; set; }
+        public BuscarEnvioNumeroTracking(IRepositorioEnvio repoEnvio)
+        {
+            RepoEnvio = repoEnvio;
+        }
+        public EnvioEnteroDTO Ejecutar(string numeroTracking)
+        {
+            return EnvioMapper.EnvioToEnvioEnteroDTO(RepoEnvio.GetEnvioPorNumeroTracking(numeroTracking));
+        }
+    }
+}
+
+***********************************
+Archivo: AltaUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\UsuarioCU\AltaUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.UsuarioCU
+{
+    public class AltaUsuario : IAltaUsuario
+    {
+        private IRepositorioUsuario RepoUsuarios { get; set; }
+
+        public AltaUsuario(IRepositorioUsuario repoUsuarios)
+        {
+            RepoUsuarios = repoUsuarios;
+        }
+
+        public void Ejecutar(UsuarioDTO usuarioDTO)
+        {
+            if (usuarioDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+            //Convertir el DTO a objeto de tipo entidad Carrera
+            Usuario usuario = UsuarioMapper.UsuarioFromUsuarioDTO(usuarioDTO);
+            //Pasar este objeto Carrera a LogicaAccesoDatos
+            RepoUsuarios.Alta(usuario);
+        }
+    }
+}
+
+***********************************
+Archivo: MostrarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\UsuarioCU\MostrarUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.UsuarioCU
+{
+    public class MostrarUsuario : IMostrarUsuario
+    {
+        private IRepositorioUsuario RepoUsuarios { get; set; }
+        public MostrarUsuario(IRepositorioUsuario repoUsuarios)
+        {
+            RepoUsuarios = repoUsuarios;
+        }
+
+        public List<MostrarUsuarioDTO> Ejecutar()
+        {
+            List<Usuario> usuarios = RepoUsuarios.GetAll().ToList();
+            if (usuarios.Count == 0)
+            {
+                throw new ArgumentNullException("No hay usuarios");
+            }
+
+            List<MostrarUsuarioDTO> usuariosDTO = UsuarioMapper.UsuarioDTOFromUsuario(usuarios);
+        
+            return usuariosDTO;
+        }
+    }
+}
+
+***********************************
+Archivo: BuscarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\UsuarioCU\BuscarUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.UsuarioCU
+{
+    public class BuscarUsuario : IBuscarUsuario
+    {
+        private IRepositorioUsuario repoUsuario {  get; set; }
+        public BuscarUsuario(IRepositorioUsuario repoUsuario)
+        {
+            this.repoUsuario = repoUsuario;
+        }
+
+        public MostrarUsuarioDTO Ejecutar(int id)
+        {
+            return UsuarioMapper.UsuarioToMostrarUsuarioDTO(repoUsuario.GetPorId(id));
+        }
+    }
+}
+
+***********************************
+Archivo: LoginUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\UsuarioCU\LoginUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.UsuarioCU
+{
+    public class LoginUsuario : ILoginUsuario
+    {
+        private IRepositorioUsuario repoUsuario { get; set; }
+        public LoginUsuario(IRepositorioUsuario repoUsuario)
+        {
+            this.repoUsuario = repoUsuario;
+        }
+        public UsuarioEnteroDTO Ejecutar(string email, string contrasenia)
+        {
+            return UsuarioMapper.UsuarioToUsuarioEnteroDTO(repoUsuario.Login(email, contrasenia));
+        }
+    }
+}
+
+***********************************
+Archivo: EditarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\UsuarioCU\EditarUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using Compartido.Mappers;
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.EntidadesNegocio;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.UsuarioCU
+{
+    public class EditarUsuario : IEditarUsuario
+    {
+        private IRepositorioUsuario repoUsuario {  get; set; }
+        public EditarUsuario(IRepositorioUsuario repoUsuario)
+        {
+            this.repoUsuario = repoUsuario;
+        }
+
+        public void Ejecutar(MostrarUsuarioDTO usuarioDTO)
+        {
+            Usuario usuario = UsuarioMapper.UsuarioFromMostrarUsuarioDTO(usuarioDTO);
+            usuario.Id = usuarioDTO.Id;
+            repoUsuario.Editar(usuario);
+        }
+    }
+}
+
+***********************************
+Archivo: BorrarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\UsuarioCU\BorrarUsuario.cs
+***********************************
+using LogicaAplicacion.InterfaceCasosUso.UsuarioCU;
+using LogicaNegocio.InterfaceRepositorios;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.ImplementacionCasosUso.UsuarioCU
+{
+    public class BorrarUsuario : IBorrarUsuario
+    {
+        private IRepositorioUsuario repoUsuarios { get; set; }
+        public BorrarUsuario(IRepositorioUsuario repositorioUsuarios)
+        {
+            repoUsuarios = repositorioUsuarios;
+        }
+
+        public void Ejecutar(int id)
+        {
+            repoUsuarios.Baja(id);
+        }
+    }
+}
+
+***********************************
+Archivo: AltaAuditoria.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\ImplementacionCasosUso\AuditoriaCU\AltaAuditoria.cs
+***********************************
+using Compartido.DTOs.AuditoriaDTOs;
+using LogicaAplicacion.InterfaceCasosUso.AuditoriaCU;
+using Compartido.Mappers;
+using LogicaNegocio.InterfaceRepositorios;
+using LogicaNegocio.EntidadesNegocio;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+
+namespace LogicaAplicacion.ImplementacionCasosUso.AuditoriaCU
+{
+    public class AltaAuditoria : IAltaAuditoria
+    { 
+        private IRepositorioAuditoria RepoAuditoria { get; set; }
+        public AltaAuditoria(IRepositorioAuditoria repoAuditoria)
+        {
+            RepoAuditoria = repoAuditoria;
+        }
+
+        public void Ejecutar(AuditoriaDTO auditoriaDTO)
+        {
+            if (auditoriaDTO == null)
+            {
+                throw new ArgumentNullException("Datos incorrectos");
+            }
+
+            Auditoria auditoria = AuditoriaMapper.AuditoriaFromAuditoriaDTO(auditoriaDTO);
+            RepoAuditoria.Alta(auditoria);
+        }
+
+
+
+    }
+}
+
+***********************************
+Archivo: IMostrarAgencia.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\AgenciaCU\IMostrarAgencia.cs
+***********************************
+using Compartido.DTOs.AgenciaDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.AgenciaCU
+{
+    public interface IMostrarAgencia
+    {
+        List<AgenciaEnteraDTO> Ejecutar();
+    }
+}
+
+***********************************
+Archivo: IAltaComentario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\ComentarioCU\IAltaComentario.cs
+***********************************
+using Compartido.DTOs.ComentarioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.ComentarioCU
+{
+    public interface IAltaComentario
+    {
+        void Ejecutar(ComentarioDTO comentarioDTO);
+    }
+}
+
+***********************************
+Archivo: IBuscarEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\EnvioCU\IBuscarEnvio.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.EnvioCU
+{
+    public interface IBuscarEnvio
+    {
+        EnvioEnteroDTO Ejecutar(int id);
+    }
+}
+
+***********************************
+Archivo: IFinalizarEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\EnvioCU\IFinalizarEnvio.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.EnvioCU
+{
+    public interface IFinalizarEnvio
+    {
+        public void Ejecutar(int id);
+    }
+}
+
+***********************************
+Archivo: IMostrarEnvio.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\EnvioCU\IMostrarEnvio.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.EnvioCU
+{
+    public interface IMostrarEnvio
+    {
+        List<EnvioEnteroDTO> Ejecutar();
+    }
+}
+
+***********************************
+Archivo: IAltaEnvioUrgente.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\EnvioCU\IAltaEnvioUrgente.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.EnvioCU
+{
+    public interface IAltaEnvioUrgente
+    {
+        int Ejecutar(AltaEnvioUrgenteDTO envioDTO);
+    }
+}
+
+***********************************
+Archivo: IAltaEnvioComun.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\EnvioCU\IAltaEnvioComun.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Compartido.DTOs.EnvioDTOs;
+
+namespace LogicaAplicacion.InterfaceCasosUso.EnvioCU
+{
+    public interface IAltaEnvioComun
+    {
+        int Ejecutar(AltaEnvioComunDTO envioDTO);
+    }
+}
+
+***********************************
+Archivo: IBuscarEnvioNumeroTracking.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\EnvioCU\IBuscarEnvioNumeroTracking.cs
+***********************************
+using Compartido.DTOs.EnvioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.EnvioCU
+{
+    public interface IBuscarEnvioNumeroTracking
+    {
+        EnvioEnteroDTO Ejecutar(string numeroTracking);
+    }
+}
+
+***********************************
+Archivo: IBuscarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\UsuarioCU\IBuscarUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.UsuarioCU
+{
+    public interface IBuscarUsuario
+    {
+        MostrarUsuarioDTO Ejecutar(int id);
+    }
+}
+
+***********************************
+Archivo: ILoginUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\UsuarioCU\ILoginUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.UsuarioCU
+{
+    public interface ILoginUsuario
+    {
+        UsuarioEnteroDTO Ejecutar(string email, string contrasenia);
+    }
+}
+
+***********************************
+Archivo: IAltaUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\UsuarioCU\IAltaUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.UsuarioCU
+{
+    public interface IAltaUsuario
+    {
+
+        public void Ejecutar(UsuarioDTO usuarioDTO);
+    }
+}
+
+***********************************
+Archivo: IEditarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\UsuarioCU\IEditarUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.UsuarioCU
+{
+    public interface IEditarUsuario
+    {
+        public void Ejecutar(MostrarUsuarioDTO usuarioDTO);
+
+    }
+}
+
+***********************************
+Archivo: IBorrarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\UsuarioCU\IBorrarUsuario.cs
+***********************************
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.UsuarioCU
+{
+    public interface IBorrarUsuario
+    {
+        public void Ejecutar(int id);
+    }
+}
+
+***********************************
+Archivo: IMostrarUsuario.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\UsuarioCU\IMostrarUsuario.cs
+***********************************
+using Compartido.DTOs.UsuarioDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.UsuarioCU
+{
+    public interface IMostrarUsuario
+    {
+        List<MostrarUsuarioDTO> Ejecutar();
+    }
+}
+
+***********************************
+Archivo: IAltaAuditoria.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\LogicaAplicacion\InterfaceCasosUso\Auditoria\IAltaAuditoria.cs
+***********************************
+using Compartido.DTOs.AuditoriaDTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LogicaAplicacion.InterfaceCasosUso.AuditoriaCU
+{
+    public interface IAltaAuditoria
+    {
+        public void Ejecutar(AuditoriaDTO auditoriaDTO);
+    }
+}
+
+***********************************
+Archivo: MostrarAgenciaViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Agencia\MostrarAgenciaViewModel.cs
+***********************************
+namespace MVC.Models.Agencia
+{
+    public class MostrarAgenciaViewModel
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+    }
+}
+
+***********************************
+Archivo: ComentarioViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Comentario\ComentarioViewModel.cs
+***********************************
+namespace MVC.Models.Comentario
+{
+    public class ComentarioViewModel
+    {
+        public int EnvioId { get; set; }
+        public string TextoComentario { get; set; }
+    }
+}
+
+***********************************
+Archivo: AltaEnvioComunViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Envio\AltaEnvioComunViewModel.cs
+***********************************
+using MVC.Models.Agencia;
+using System.Collections;
+
+namespace MVC.Models.Envio
+{
+    public class AltaEnvioComunViewModel
+    {
+        public string Email { get; set; }
+        public int AgenciaId { get; set; }
+        public double Peso { get; set; }
+        public IEnumerable<MostrarAgenciaViewModel> Agencias { get; set; } = new List<MostrarAgenciaViewModel>();
+    }
+}
+
+***********************************
+Archivo: EnvioEnteroViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Envio\EnvioEnteroViewModel.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+
+namespace MVC.Models.Envio
+{
+    public class EnvioEnteroViewModel
+    {
+        public int Id { get; set; }
+        public string NumeroTracking { get; set; }
+        public int EmpleadoId { get; set; }
+        public int ClienteId { get; set; }
+        public double Peso {  get; set; }
+        public Estado Estado { get; set; }
+    }
+}
+
+***********************************
+Archivo: AltaEnvioUrgenteViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Envio\AltaEnvioUrgenteViewModel.cs
+***********************************
+using MVC.Models.Agencia;
+
+namespace MVC.Models.Envio
+{
+    public class AltaEnvioUrgenteViewModel
+    {
+        public string Email { get; set; }
+        public string DireccionPostal { get; set; }
+        public double Peso { get; set; }
+    }
+}
+
+***********************************
+Archivo: LoginUsuarioViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Usuario\LoginUsuarioViewModel.cs
+***********************************
+namespace MVC.Models.Usuario
+{
+    public class LoginUsuarioViewModel
+    {
+        public int Id { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+    }
+}
+
+***********************************
+Archivo: UsuarioViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Usuario\UsuarioViewModel.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+using Microsoft.AspNetCore.Mvc.Rendering;
+
+namespace MVC.Models.Usuario
+{
+    public class UsuarioViewModel
+    {
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+
+    }
+}
+
+***********************************
+Archivo: MostrarUsuarioViewModel.cs
+Carpeta: E:\Facultad ORT\Programacion 3\Obligatorio\Obligatorio\MVC\Models\Usuario\MostrarUsuarioViewModel.cs
+***********************************
+using LogicaNegocio.EntidadesNegocio;
+
+namespace MVC.Models.Usuario
+{
+    public class MostrarUsuarioViewModel
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Email { get; set; }
+        public string Contrasenia { get; set; }
+        public Rol Rol { get; set; }
+        public bool Estado { get; set; }
+    }
+}

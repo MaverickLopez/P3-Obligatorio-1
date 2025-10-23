@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="ImplementacionCasosUso\EnvioCU\BuscarEnvio.cs~RF7bac18.TMP" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Compartido\Compartido.csproj" />
+    <ProjectReference Include="..\LogicaAccesoDatos\LogicaAccesoDatos.csproj" />
+  </ItemGroup>
+
+</Project>
